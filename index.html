@@ -39,6 +39,7 @@
     <div id="login-form">
       <p>Log in with Spotify to begin.</p>
       <button class="btn btn-success btn-lg" id="login-button">Login with Spotify</button>
+      <p id="token-status" style="color: red; margin-top: 10px;">Checking token...</p>
     </div>
 
     <!-- SEARCH -->
@@ -112,7 +113,6 @@
 ===================================== */
 const CLIENT_ID = "d36e30807e5c4cd68c64b3d30789bc8a";
 const REDIRECT_URI = "https://renjgarcia1.github.io/playlist-builder/";
-
 const SCOPES = "playlist-modify-public playlist-read-private";
 
 /* PKCE HELPERS */
@@ -179,6 +179,7 @@ async function handleSpotifyCallback() {
   if (data.access_token) {
     localStorage.setItem("spotify_access_token", data.access_token);
     window.history.replaceState({}, document.title, "/");
+    updateTokenStatus();
     showApp();
   }
 }
@@ -190,94 +191,17 @@ function showApp() {
   document.getElementById("results-section").style.display = "block";
 }
 
-/* SEARCH PLAYLISTS */
-async function searchPlaylists(keyword) {
+/* TOKEN STATUS DISPLAY */
+function updateTokenStatus() {
   const token = localStorage.getItem("spotify_access_token");
-  const res = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(keyword)}&type=playlist&limit=10`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  const data = await res.json();
-  return data.playlists.items;
-}
-
-/* GET TRACKS FROM PLAYLIST */
-async function getTracksFromPlaylist(id) {
-  const token = localStorage.getItem("spotify_access_token");
-  const res = await fetch(`https://api.spotify.com/v1/playlists/${id}/tracks?limit=50`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  const data = await res.json();
-  return data.items.map(item => item.track);
-}
-
-/* BUILD TOP TRACKS */
-async function buildTopTracks() {
-  const keyword = document.getElementById("playlist-terms").value;
-  const playlists = await searchPlaylists(keyword);
-
-  document.getElementById("playlist-items").innerHTML = "";
-  playlists.forEach((pl, i) => {
-    document.getElementById("playlist-items").innerHTML += `
-      <tr>
-        <td>${i+1}</td>
-        <td>${pl.name}</td>
-        <td>${pl.tracks.total}</td>
-      </tr>`;
-  });
-
-  let trackCount = {};
-  for (const pl of playlists) {
-    const tracks = await getTracksFromPlaylist(pl.id);
-    tracks.forEach(t => {
-      if (!t) return;
-      const key = `${t.name} - ${t.artists[0].name}`;
-      trackCount[key] = (trackCount[key] || 0) + 1;
-    });
+  const statusEl = document.getElementById("token-status");
+  if (token) {
+    statusEl.textContent = "Token exists ✅";
+    statusEl.style.color = "green";
+  } else {
+    statusEl.textContent = "No token ❌";
+    statusEl.style.color = "red";
   }
-
-  // Sort tracks by count
-  const sortedTracks = Object.entries(trackCount)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 20);
-
-  document.getElementById("track-items").innerHTML = "";
-  sortedTracks.forEach(([name, count], i) => {
-    const [trackName, artist] = name.split(" - ");
-    document.getElementById("track-items").innerHTML += `
-      <tr>
-        <td>${i+1}</td>
-        <td>${trackName}</td>
-        <td>${artist}</td>
-        <td>${count}</td>
-      </tr>`;
-  });
-
-  document.getElementById("ready-to-save").style.display = "block";
-}
-
-/* SAVE NEW PLAYLIST */
-async function savePlaylist() {
-  const token = localStorage.getItem("spotify_access_token");
-  const profileRes = await fetch("https://api.spotify.com/v1/me", {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  const profile = await profileRes.json();
-
-  const playlistRes = await fetch(`https://api.spotify.com/v1/users/${profile.id}/playlists`, {
-    method: "POST",
-    headers: { 
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ name: "Top Tracks Playlist", public: true })
-  });
-
-  const playlist = await playlistRes.json();
-
-  const tracks = Array.from(document.querySelectorAll("#track-items tr td:nth-child(2)")).map(td => td.textContent);
-  const uris = tracks.map(t => `spotify:track:${t}`); // Simplified; real implementation would require track IDs
-
-  alert("Playlist created! Track saving requires track IDs (simplified here).");
 }
 
 /* INIT */
@@ -289,7 +213,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("go").addEventListener("click", buildTopTracks);
   document.getElementById("save-button").addEventListener("click", savePlaylist);
 
-  handleSpotifyCallback();
+  handleSpotifyCallback().then(updateTokenStatus);
 });
 </script>
 
