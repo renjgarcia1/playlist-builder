@@ -564,7 +564,7 @@ function loginWithSpotify() {
     var scopes = 'playlist-modify-public';
 
     if (document.location.hostname == 'localhost') {
-        redirect_uri = 'http://localhost:8000/index.html';
+        redirect_uri = 'http://localhost:8000/';
     }
 
     var url = 'https://accounts.spotify.com/authorize?client_id=' + client_id +
