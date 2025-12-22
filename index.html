@@ -1,231 +1,295 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Playlist Builder</title>
-    <link rel="stylesheet" href="dist/sp-bootstrap.min.css">
-    <link rel="stylesheet" href="styles.css">
-    <style>
-        body { padding-top: 70px; }
-        #token-status { font-weight: bold; margin-top: 10px; }
-        .results { margin-top: 20px; }
-        #track-table { display: none; }
-        #search-form { display: none; }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Playlist Builder</title>
+<link type="text/css" href="styles.css" rel="stylesheet" />
+<link href="dist/sp-bootstrap.min.css" rel="stylesheet" media="screen">
+<style>
+body { padding-top: 70px; }
+.intro-form { margin-top: 20px; }
+.results { margin-top: 20px; }
+.progress { margin-top: 10px; }
+</style>
 </head>
 <body>
 
 <!-- NAVBAR -->
-<nav class="navbar navbar-default navbar-fixed-top">
+<div class="navbar navbar-default navbar-fixed-top" role="navigation">
   <div class="container">
     <div class="navbar-header">
-      <a class="navbar-brand" href="#">Playlist Builder</a>
+      <a class="navbar-brand" href="index.html">Playlist Builder</a>
     </div>
-    <a href="https://www.spotify.com" class="btn btn-primary navbar-btn navbar-right">
-      Get Spotify
-    </a>
+    <div class="navbar-collapse collapse">
+      <a href="https://www.spotify.com" class="btn btn-primary navbar-btn navbar-right">Get Spotify</a>
+    </div>
   </div>
-</nav>
+</div>
 
-<!-- HERO / LOGIN -->
-<div class="jumbotron text-center">
-    <div class="container">
-        <h1>Playlist Builder</h1>
-        <p class="lead">Build smarter Spotify playlists from real listener data.</p>
+<!-- HERO -->
+<div id='top' class="jumbotron">
+  <div class="container-fluid" id="jumbo-dialog">
+    <h1>The Playlist Builder</h1>
+    <p class="lead">Aggregate the top tracks from popular public playlists on Spotify.</p>
+    <p id='ttext'>
+      Enter a keyword (like <i>workout</i>) and find tracks that appear most often in related playlists.
+    </p>
 
-        <div id="login-form">
-            <p>Log in with Spotify to begin.</p>
-            <button class="btn btn-success btn-lg" id="login-button">Login with Spotify</button>
-            <div id="token-status"></div>
-        </div>
-
-        <div id="search-form">
-            <input type="text" id="playlist-terms" class="form-control input-lg" placeholder="workout, party, latin, hip hop">
-            <br>
-            <button id="go" class="btn btn-primary btn-lg">Find Playlists</button>
-        </div>
+    <!-- LOGIN FORM -->
+    <div class='intro-form' id='login-form'>
+      <p>Login with Spotify to get started.</p>
+      <p><a class="btn btn-primary btn-lg" id='login-button' role="button">Login with Spotify</a></p>
+      <div id="token-status"></div>
     </div>
+
+    <!-- SEARCH FORM -->
+    <div id="search-form" class="intro-form row">
+      <div class="col-xs-offset-1 col-xs-10 col-sm-offset-3 col-sm-6">
+        <input type="text" class="form-control input-lg" id="playlist-terms" placeholder="workout, party, latin" value="">
+        <br>
+        <button class="btn btn-primary btn-lg" id='go' role="button">Find playlists</button>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- RESULTS -->
-<div class="container results" id="playlist-section">
-    <h2>Matching Playlists for <span class="keywords"></span></h2>
-    <p>Found <strong><span class="total-playlists">0</span></strong> playlists with <strong><span class="total-tracks">0</span></strong> tracks.</p>
+<!-- PLAYLIST RESULTS -->
+<div class="container-fluid work">
+  <div id='info' class="h1 text-center"></div>
+
+  <div class="results" id='playlist-table'>
+    <h1>Matching Playlists for <span class='keywords'></span></h1>
+
+    <div class="progress">
+      <div id='playlist-progress' class="progress-bar" role="progressbar" style="width:0%;"></div>
+    </div>
+
+    <div class='button-row' id='fetch-tracks-ready'>
+      We've found <span class="total-playlists"></span> playlists with <span class='total-tracks'></span> tracks.
+      <br>
+      Press <b>Find top tracks</b> or <a href="index.html">refine your query</a>.
+      <div class='obutton-row'>
+        <button id='fetch-tracks' class='btn btn-primary'>Find top tracks</button>
+      </div>
+    </div>
+
     <table class="table table-striped table-bordered">
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>Playlist</th>
-                <th>Tracks</th>
-            </tr>
-        </thead>
-        <tbody id="playlist-items"></tbody>
+      <thead>
+        <tr><th>#</th><th>Playlist name</th><th># Tracks</th></tr>
+      </thead>
+      <tbody id="playlist-items"></tbody>
     </table>
-    <button id="fetch-tracks" class="btn btn-primary">Find Top Tracks</button>
-</div>
+  </div>
 
-<div class="container results" id="track-table">
-    <h2>Top Tracks</h2>
-    <button id="save-button" class="btn btn-success">Save Playlist to Spotify</button>
+  <!-- TRACK RESULTS -->
+  <div class="results" id='track-table'>
+    <h1><a id='playlist-name'>Top <span class='keywords'></span> Tracks</a></h1>
+
+    <div class="button-row">
+      <div id='fetching-tracks'>
+        Aggregating <span id='tt-total-tracks'></span> tracks from all playlists.
+        <p>You can stop at any time.</p>
+        <button id='stop-button' class='btn btn-primary stop-button'>Stop</button>
+      </div>
+      <div id='ready-to-save'>
+        Here are the top 100 tracks. Save them as your own Spotify playlist:
+        <br>
+        <button id="save-button" class="btn btn-primary btn-lg">Save Playlist to Spotify</button>
+      </div>
+    </div>
+
+    <div class="progress">
+      <div id='track-progress' class="progress-bar" role="progressbar" style="width:0%;"></div>
+    </div>
+
+    <label><input id='norm-for-pop' type='checkbox'> Prefer more distinctive tracks</label>
     <table class="table table-striped table-bordered">
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>Track</th>
-                <th>Artist</th>
-                <th>Count</th>
-            </tr>
-        </thead>
-        <tbody id="track-items"></tbody>
+      <thead>
+        <tr><th>#</th><th>Title</th><th>Artist</th><th>Score</th></tr>
+      </thead>
+      <tbody id="track-items"></tbody>
     </table>
+  </div>
 </div>
 
-<footer class="text-center">
-    <p class="text-muted">Playlist Builder · Powered by Spotify</p>
-</footer>
+<!-- FOOTER -->
+<div id="footer">
+  <div class="container text-center">
+    <p class="text-muted">
+      Powered by <a href="http://spotify.com">Spotify</a>.
+    </p>
+  </div>
+</div>
 
-<!-- LIBS -->
+<!-- SCRIPTS -->
 <script src="lib/jquery-1.11.1.min.js"></script>
 <script src="lib/bootstrap.min.js"></script>
 <script src="lib/underscore-min.js"></script>
 
 <script>
-const CLIENT_ID = "d36e30807e5c4cd68c64b3d30789bc8a";
+"use strict";
+
+// Spotify Auth Settings
+const CLIENT_ID = "YOUR_CLIENT_ID";
 const REDIRECT_URI = "https://renjgarcia1.github.io/playlist-builder/";
 const SCOPES = "playlist-modify-public playlist-read-private";
 
-let token = null;
+let credentials = null;
+let allPlaylists = [];
+let allTracks = {};
+let topTracks = [];
+let abortFetching = false;
+let popNormalize = false;
+let totalTracks = 0;
 
-/* LOGIN / TOKEN */
+// --- AUTH ---
 function loginWithSpotify() {
-    const authUrl = 
-        "https://accounts.spotify.com/authorize?" +
-        "client_id=" + encodeURIComponent(CLIENT_ID) +
-        "&response_type=token" +
-        "&scope=" + encodeURIComponent(SCOPES) +
-        "&redirect_uri=" + encodeURIComponent(REDIRECT_URI);
-    window.location.href = authUrl;
+  const url = `https://accounts.spotify.com/authorize?client_id=${CLIENT_ID}&response_type=token&scope=${encodeURIComponent(SCOPES)}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+  window.location.href = url;
 }
 
 function parseTokenFromHash() {
-    const hash = window.location.hash.substring(1);
-    const params = new URLSearchParams(hash);
-    const access_token = params.get("access_token");
-    if (access_token) {
-        token = access_token;
-        localStorage.setItem("spotify_access_token", token);
-        window.location.hash = "";
+  const hash = window.location.hash.substring(1);
+  const params = new URLSearchParams(hash);
+  const access_token = params.get("access_token");
+  if (access_token) {
+    credentials = { token: access_token, expires: Date.now() + 3600*1000 };
+    localStorage.setItem("credentials", JSON.stringify(credentials));
+    window.location.hash = "";
+  } else if (localStorage.getItem("credentials")) {
+    credentials = JSON.parse(localStorage.getItem("credentials"));
+  }
+  updateUI();
+}
+
+function updateUI() {
+  if (credentials && credentials.token) {
+    $("#login-form").hide();
+    $("#search-form").show();
+    $("#token-status").text("Logged in ✅").css("color", "green");
+  } else {
+    $("#login-form").show();
+    $("#search-form").hide();
+    $("#token-status").text("Not logged in ❌").css("color", "red");
+  }
+}
+
+// --- CALL SPOTIFY ---
+function callSpotify(url, data) {
+  return $.ajax(url, {
+    dataType: 'json',
+    data: data,
+    headers: { 'Authorization': 'Bearer ' + credentials.token }
+  });
+}
+
+function postSpotify(url, json) {
+  return $.ajax(url, {
+    type: "POST",
+    data: JSON.stringify(json),
+    dataType: 'json',
+    headers: {
+      'Authorization': 'Bearer ' + credentials.token,
+      'Content-Type': 'application/json'
     }
-    return token;
+  });
 }
 
-function updateTokenStatus() {
-    const statusEl = document.getElementById("token-status");
-    token = token || localStorage.getItem("spotify_access_token");
-    if (token) {
-        statusEl.textContent = "Token exists ✅";
-        statusEl.style.color = "green";
-        document.getElementById("login-form").style.display = "none";
-        document.getElementById("search-form").style.display = "block";
-    } else {
-        statusEl.textContent = "No token ❌";
-        statusEl.style.color = "red";
-        document.getElementById("login-form").style.display = "block";
-    }
+// --- PLAYLIST SEARCH ---
+function findMatchingPlaylists(text) {
+  totalTracks = 0;
+  allPlaylists = [];
+  abortFetching = false;
+  $("#playlist-items").empty();
+  $("#fetch-tracks-ready").hide();
+
+  const url = 'https://api.spotify.com/v1/search';
+  const params = { q: text, type:'playlist', limit:50 };
+  callSpotify(url, params).then(processPlaylists, () => { alert("Error fetching playlists"); });
 }
 
-/* SEARCH PLAYLISTS */
-async function searchPlaylists(keyword) {
-    const res = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(keyword)}&type=playlist&limit=10`, {
-        headers: { Authorization: `Bearer ${token}` }
-    });
-    const data = await res.json();
-    return data.playlists.items;
+function processPlaylists(data) {
+  data.playlists.items.forEach((item, i) => {
+    allPlaylists.push([item.owner.id, item.id]);
+    totalTracks += item.tracks.total;
+    const tr = `<tr><td>${i+1}</td><td><a href="${item.uri}">${item.name}</a></td><td>${item.tracks.total}</td></tr>`;
+    $("#playlist-items").append(tr);
+  });
+  $(".total-playlists").text(allPlaylists.length);
+  $(".total-tracks").text(totalTracks);
+  $("#playlist-progress").css("width", Math.min(100, allPlaylists.length) + "%");
+  $("#fetch-tracks-ready").show();
 }
 
-/* GET TRACKS FROM PLAYLIST */
-async function getTracksFromPlaylist(id) {
-    const res = await fetch(`https://api.spotify.com/v1/playlists/${id}/tracks?limit=50`, {
-        headers: { Authorization: `Bearer ${token}` }
-    });
-    const data = await res.json();
-    return data.items.map(item => item.track);
-}
+// --- TRACK AGGREGATION ---
+function fetchAllTracksFromPlaylist() {
+  $("#playlist-table").hide();
+  $("#track-table").show();
+  $("#ready-to-save").hide();
+  $("#fetching-tracks").show();
+  allTracks = {};
+  let queue = allPlaylists.slice();
+  let outstanding = 0;
+  let maxSimultaneous = 10;
 
-/* BUILD TOP TRACKS */
-async function buildTopTracks() {
-    const keyword = document.getElementById("playlist-terms").value;
-    const playlists = await searchPlaylists(keyword);
-
-    document.getElementById("playlist-items").innerHTML = "";
-    playlists.forEach((pl, i) => {
-        document.getElementById("playlist-items").innerHTML += `
-            <tr>
-                <td>${i+1}</td>
-                <td>${pl.name}</td>
-                <td>${pl.tracks.total}</td>
-            </tr>`;
-    });
-
-    let trackCount = {};
-    for (const pl of playlists) {
-        const tracks = await getTracksFromPlaylist(pl.id);
-        tracks.forEach(t => {
-            if (!t) return;
-            const key = `${t.name} - ${t.artists[0].name}`;
-            trackCount[key] = (trackCount[key] || 0) + 1;
+  function fetchNext() {
+    while (!abortFetching && queue.length > 0 && outstanding < maxSimultaneous) {
+      const [user, pid] = queue.pop();
+      outstanding++;
+      callSpotify(`https://api.spotify.com/v1/users/${user}/playlists/${pid}/tracks`).then(data => {
+        if (data.items) data.items.forEach((item, i) => {
+          if (item.track && item.track.id) {
+            allTracks[item.track.id] = allTracks[item.track.id] || item.track;
+            allTracks[item.track.id].count = (allTracks[item.track.id].count || 0) + 1;
+          }
         });
+        outstanding--;
+        refreshTrackList();
+        if (queue.length > 0 || outstanding > 0) fetchNext();
+      }, () => { outstanding--; fetchNext(); });
     }
-
-    const sortedTracks = Object.entries(trackCount)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 20);
-
-    document.getElementById("track-items").innerHTML = "";
-    sortedTracks.forEach(([name, count], i) => {
-        const [trackName, artist] = name.split(" - ");
-        document.getElementById("track-items").innerHTML += `
-            <tr>
-                <td>${i+1}</td>
-                <td>${trackName}</td>
-                <td>${artist}</td>
-                <td>${count}</td>
-            </tr>`;
-    });
-
-    document.getElementById("track-table").style.display = "block";
+  }
+  fetchNext();
 }
 
-/* SAVE PLAYLIST */
+function getTrackScore(track) {
+  if (popNormalize) return 1000 * (track.count || 1) / Math.pow(Math.max(track.popularity || 30, 30), 2);
+  return track.count || 1;
+}
+
+function refreshTrackList() {
+  let tracks = Object.values(allTracks).map(t => ({...t, score: getTrackScore(t)}));
+  tracks.sort((a,b) => b.score - a.score);
+  topTracks = tracks.slice(0, 100);
+  const table = $("#track-items");
+  table.empty();
+  topTracks.forEach((track, i) => {
+    const row = `<tr><td>${i+1}</td><td><a href="${track.uri}">${track.name}</a></td><td>${track.artists[0].name}</td><td>${Math.round(track.score)}</td></tr>`;
+    table.append(row);
+  });
+}
+
+// --- SAVE PLAYLIST ---
 async function savePlaylist() {
-    const profileRes = await fetch("https://api.spotify.com/v1/me", {
-        headers: { Authorization: `Bearer ${token}` }
-    });
-    const profile = await profileRes.json();
-
-    const playlistRes = await fetch(`https://api.spotify.com/v1/users/${profile.id}/playlists`, {
-        method: "POST",
-        headers: { 
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ name: "Top Tracks Playlist", public: true })
-    });
-
-    const playlist = await playlistRes.json();
-    alert("Playlist created! Adding tracks requires track IDs (simplified).");
+  const profile = await callSpotify('https://api.spotify.com/v1/me');
+  const newPlaylist = await postSpotify(`https://api.spotify.com/v1/users/${profile.id}/playlists`, { name: "Top " + $("#playlist-terms").val() + " tracks" });
+  const uris = topTracks.map(t => t.uri);
+  await postSpotify(`https://api.spotify.com/v1/users/${profile.id}/playlists/${newPlaylist.id}/tracks`, { uris });
+  alert("Playlist saved!");
 }
 
-/* INIT */
-document.addEventListener("DOMContentLoaded", () => {
-    parseTokenFromHash();
-    updateTokenStatus();
-
-    document.getElementById("login-button").addEventListener("click", loginWithSpotify);
-    document.getElementById("go").addEventListener("click", buildTopTracks);
-    document.getElementById("save-button").addEventListener("click", savePlaylist);
+// --- INIT ---
+$(document).ready(() => {
+  parseTokenFromHash();
+  $("#login-button").on('click', loginWithSpotify);
+  $("#go").on('click', () => { $(".keywords").text($("#playlist-terms").val()); findMatchingPlaylists($("#playlist-terms").val()); });
+  $("#fetch-tracks").on('click', fetchAllTracksFromPlaylist);
+  $("#save-button").on('click', savePlaylist);
+  $("#stop-button").on('click', () => { abortFetching = true; });
+  $("#norm-for-pop").on('click', () => { popNormalize = $("#norm-for-pop").is(':checked'); refreshTrackList(); });
 });
 </script>
+
 </body>
 </html>
