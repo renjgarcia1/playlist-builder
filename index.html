@@ -4,7 +4,6 @@
     <meta charset="utf-8">
     <title>Playlist Builder</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-
     <link rel="stylesheet" href="dist/sp-bootstrap.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -29,7 +28,6 @@
   <div class="container-fluid text-center">
     <h1>Playlist Builder</h1>
     <p class="lead">Build smarter Spotify playlists from real listener data.</p>
-
     <p id="ttext">
       Playlist Builder scans thousands of public Spotify playlists
       and identifies the most frequently used tracks based on your search.
@@ -44,8 +42,7 @@
     <!-- SEARCH -->
     <div id="search-form" class="row" style="display:none;">
       <div class="col-xs-10 col-xs-offset-1 col-sm-6 col-sm-offset-3">
-        <input id="playlist-terms" class="form-control input-lg"
-               placeholder="workout, party, latin, hip hop">
+        <input id="playlist-terms" class="form-control input-lg" placeholder="workout, party, latin, hip hop">
         <br>
         <button id="go" class="btn btn-primary btn-lg">Find Playlists</button>
       </div>
@@ -108,42 +105,86 @@
 
 <script>
 /* =====================================
-   SPOTIFY IMPLICIT GRANT CONFIG
+   SPOTIFY PKCE CONFIG
 ===================================== */
 const CLIENT_ID = "d36e30807e5c4cd68c64b3d30789bc8a";
 const REDIRECT_URI = "https://renjgarcia1.github.io/playlist-builder/";
 const SCOPES = "playlist-modify-public playlist-read-private";
 
-/* LOGIN WITH SPOTIFY (Implicit Grant) */
-function loginWithSpotify() {
-  const url =
-    "https://accounts.spotify.com/authorize" +
-    "?client_id=" + CLIENT_ID +
-    "&response_type=token" +
-    "&redirect_uri=" + encodeURIComponent(REDIRECT_URI) +
-    "&scope=" + encodeURIComponent(SCOPES);
-  
-  window.location = url;
+/* PKCE HELPERS */
+function generateRandomString(length) {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  return Array.from(crypto.getRandomValues(new Uint8Array(length)))
+    .map(x => chars[x % chars.length]).join("");
 }
 
-/* HANDLE TOKEN AFTER LOGIN */
-function handleToken() {
-  const hash = window.location.hash.substring(1);
-  const params = new URLSearchParams(hash);
-  const token = params.get("access_token");
-  if (token) {
-    localStorage.setItem("spotify_access_token", token);
-    window.location.hash = ""; // clean URL
+async function sha256(plain) {
+  const encoder = new TextEncoder();
+  return crypto.subtle.digest("SHA-256", encoder.encode(plain));
+}
+
+function base64urlencode(buffer) {
+  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function generateCodeChallenge(verifier) {
+  const hashed = await sha256(verifier);
+  return base64urlencode(hashed);
+}
+
+/* LOGIN WITH SPOTIFY */
+async function loginWithSpotify() {
+  const verifier = generateRandomString(64);
+  const challenge = await generateCodeChallenge(verifier);
+  localStorage.setItem("pkce_verifier", verifier);
+
+  const authUrl =
+    "https://accounts.spotify.com/authorize" +
+    "?client_id=" + CLIENT_ID +
+    "&response_type=code" +
+    "&redirect_uri=" + encodeURIComponent(REDIRECT_URI) +
+    "&scope=" + encodeURIComponent(SCOPES) +
+    "&code_challenge_method=S256" +
+    "&code_challenge=" + challenge;
+
+  window.location.href = authUrl;
+}
+
+/* HANDLE SPOTIFY CALLBACK */
+async function handleSpotifyCallback() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("code");
+  if (!code) return;
+
+  const verifier = localStorage.getItem("pkce_verifier");
+  const response = await fetch("https://accounts.spotify.com/api/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: CLIENT_ID,
+      grant_type: "authorization_code",
+      code: code,
+      redirect_uri: REDIRECT_URI,
+      code_verifier: verifier
+    })
+  });
+
+  const data = await response.json();
+  if (data.access_token) {
+    localStorage.setItem("spotify_access_token", data.access_token);
+    window.history.replaceState({}, document.title, "/playlist-builder/");
     showApp();
   }
 }
 
-/* CHECK TOKEN */
+/* GET TOKEN */
 function getToken() {
-  return localStorage.getItem("spotify_access_token");
+  const token = localStorage.getItem("spotify_access_token");
+  return token && token.length > 0 ? token : null;
 }
 
-/* UI SHOW/HIDE */
+/* UI CONTROL */
 function showApp() {
   document.getElementById("login-form").style.display = "none";
   document.getElementById("search-form").style.display = "block";
@@ -195,7 +236,6 @@ async function buildTopTracks() {
     });
   }
 
-  // Sort tracks by count
   const sortedTracks = Object.entries(trackCount)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 20);
@@ -215,7 +255,7 @@ async function buildTopTracks() {
   document.getElementById("ready-to-save").style.display = "block";
 }
 
-/* SAVE NEW PLAYLIST (simplified) */
+/* SAVE NEW PLAYLIST */
 async function savePlaylist() {
   const token = getToken();
   const profileRes = await fetch("https://api.spotify.com/v1/me", {
@@ -233,21 +273,21 @@ async function savePlaylist() {
   });
 
   const playlist = await playlistRes.json();
-
-  const tracks = Array.from(document.querySelectorAll("#track-items tr td:nth-child(2)")).map(td => td.textContent);
-  const uris = tracks.map(t => `spotify:track:${t}`); // simplified placeholder
-
-  alert("Playlist created! Track saving requires track IDs (simplified).");
+  alert("Playlist created! Track saving requires track IDs (simplified here).");
 }
 
 /* INIT */
 document.addEventListener("DOMContentLoaded", () => {
-  if (getToken()) {
+  handleSpotifyCallback();
+
+  const token = getToken();
+  if (token) {
     showApp();
   } else {
+    document.getElementById("login-form").style.display = "block";
     document.getElementById("login-button").addEventListener("click", loginWithSpotify);
   }
-  handleToken();
+
   document.getElementById("go").addEventListener("click", buildTopTracks);
   document.getElementById("save-button").addEventListener("click", savePlaylist);
 });
