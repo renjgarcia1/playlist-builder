@@ -9,11 +9,19 @@ body {
     font-family: Arial, sans-serif;
     text-align: center;
     padding-top: 60px;
+    background-color: #f0f0f0;
 }
 button {
     padding: 12px 20px;
     font-size: 16px;
     cursor: pointer;
+    background-color: #1DB954;
+    color: white;
+    border: none;
+    border-radius: 4px;
+}
+button:hover {
+    background-color: #1ed760;
 }
 </style>
 </head>
@@ -21,24 +29,33 @@ button {
 
 <h1>Playlist Builder</h1>
 <p id="status">Not logged in</p>
-
 <button id="login">Login with Spotify</button>
 
 <script>
 const loginBtn = document.getElementById('login');
 const statusText = document.getElementById('status');
 
+// Redirect to Netlify serverless function for Spotify login
 loginBtn.onclick = () => {
     window.location.href = "/.netlify/functions/auth";
 };
 
+// Check if user is logged in and get profile
 async function getProfile() {
-    const res = await fetch("/.netlify/functions/auth?profile=1");
-    if (!res.ok) return;
-    const data = await res.json();
-    statusText.textContent = "Logged in as: " + data.display_name;
+    try {
+        const res = await fetch("/.netlify/functions/auth?profile=1");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.display_name) {
+            statusText.textContent = "Logged in as: " + data.display_name;
+            loginBtn.style.display = "none";
+        }
+    } catch (err) {
+        console.error("Error fetching profile:", err);
+    }
 }
 
+// Run on page load
 getProfile();
 </script>
 
