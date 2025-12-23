@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Playlist Builder</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    padding-top: 60px;
+}
+button {
+    padding: 12px 20px;
+    font-size: 16px;
+    cursor: pointer;
+}
+</style>
+</head>
+<body>
+
+<h1>Playlist Builder</h1>
+<p id="status">Not logged in</p>
+
+<button id="login">Login with Spotify</button>
+
+<script>
+const loginBtn = document.getElementById('login');
+const statusText = document.getElementById('status');
+
+loginBtn.onclick = () => {
+    window.location.href = "/.netlify/functions/auth";
+};
+
+async function getProfile() {
+    const res = await fetch("/.netlify/functions/auth?profile=1");
+    if (!res.ok) return;
+    const data = await res.json();
+    statusText.textContent = "Logged in as: " + data.display_name;
+}
+
+getProfile();
+</script>
+
+</body>
+</html>
